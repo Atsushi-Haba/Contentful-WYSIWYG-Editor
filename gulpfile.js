@@ -73,6 +73,6 @@ gulp.task("clean", function () {
 gulp.task(
   "default",
   gulp.series("build", function () {
-    gulp.start("serve");
+    gulp.task("serve");
   })
 );
