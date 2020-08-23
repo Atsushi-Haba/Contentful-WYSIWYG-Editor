@@ -6,6 +6,12 @@ var rename = require("gulp-rename");
 var inlinesource = require("gulp-inline-source");
 var stylus = require("gulp-stylus");
 
+const webpackStream = require("webpack-stream");
+const webpack = require("webpack");
+
+// webpackの設定ファイルの読み込み
+const webpackConfig = require("./webpack.config");
+
 var src = "src/**/";
 var dependencies = [
   // '//cdnjs.cloudflare.com/ajax/libs/jquery/2.1.4/jquery.min.js',
@@ -26,12 +32,14 @@ gulp.task(
   gulp.series("stylus", function () {
     var filesStream = gulp.src(src + "!(*.styl)").pipe(gulp.dest("./dist"));
 
+    var wpStream = webpackStream(webpackConfig, webpack).pipe(gulp.dest("./dist"));
+
     // var depsStream = gulp
     //   .src(dependencies, { allowEmpty: true })
     //   .pipe(gulp.dest("./dist/lib"));
 
-    // return merge(filesStream, depsStream);
-    return filesStream;
+    return merge(filesStream, wpStream);
+    // return filesStream;
   })
 );
 

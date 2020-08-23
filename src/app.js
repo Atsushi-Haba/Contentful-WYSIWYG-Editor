@@ -1,49 +1,59 @@
+import  { insertAssetsWithConfirmation } from './asset';
+
 $(document).ready(function () {
   window.contentfulExtension.init(function (extension) {
     extension.window.startAutoResizer();
 
     var existingValue = extension.field.getValue();
-    const insertAssetsWithConfirmation = async (assets) => {
-     if (assets) {
-       const { links, fallbacks } = await insertAssetLinks(assets, {
-         localeCode: locale,
-         defaultLocaleCode: sdk.locales.default,
-         fallbackCode: sdk.locales.fallbacks[locale]
-       });
-       if (links && links.length > 0) {
-         if (fallbacks) {
-           const insertAnyway = await openConfirmInsertAsset(sdk.dialogs, {
-             locale: locale,
-             assets: fallbacks
-           });
-           if (!insertAnyway) {
-             throw Error('User decided to not use fallbacks');
-           }
-         }
-         return links.map(link => link.asMarkdown).join('\n\n');
-       }
-     }
-     return '';
-   };
 
-    const InsertAssetButton = (coonntext) => {
-     const ui = $.summernote.ui;
+    const AddNewAssetButton = (context) =>{
+      const ui = $.summernote.ui;
+      const action = async() => {
+        if (!extension) {
+          return;
+        }
+        const { entity: asset } = (await extension.navigator.openNewAsset({
+             slideIn: { waitForClose: true }
+           })); 
+        // eslint-disable-line @typescript-eslint/no-explicit-any
+        const markdownLinks = await insertAssetsWithConfirmation([asset], extension.locales);
+        markdownLinks.forEach((link) => {
+          context.invoke('editor.insertImage', link.url, function ($image) {
+            $image.attr('data-contentful-id', link.asset.sys.id)
+          });
+        })
+      }
+      // create button
+      const button = ui.button({
+        contents: '<i class="fa fa-child"/> New',
+        tooltip: 'Insert new Media',
+        click: action,
+      });
+      return button.render()
+    }
 
-     // create button
-     const button = ui.button({
-       contents: '<i class="fa fa-child"/> Hello',
-       tooltip: 'insertAsset',
-       click: function () {
-          const { entity: asset } = (await extension.navigator.openNewAsset({
-               slideIn: { waitForClose: true }
-             })); // eslint-disable-line @typescript-eslint/no-explicit-any
-     
-             const markdownLinks = await insertAssetsWithConfirmation([asset]);
-         // invoke insertText method with 'hello' on editor module.
-         context.invoke('editor.insertText', 'hello');
-       }
-     });
-     return button.render()
+
+    const InsertAssetButton = (context) => {
+      const ui = $.summernote.ui;
+      const action = async() => {
+        if (!extension) {
+          return;
+        }
+        const assets = (await extension.dialogs.selectMultipleAssets());
+        const markdownLinks = await insertAssetsWithConfirmation(assets, extension.locales);
+        markdownLinks.forEach((link) => {
+          context.invoke('editor.insertImage', link.url, function ($image) {
+            $image.attr('data-contentful-id', link.asset.sys.id)
+          });
+        })
+      }
+      // create button
+      const button = ui.button({
+        contents: '<i class="fa fa-child"/> Img',
+        tooltip: 'Insert exist Media',
+        click: action,
+      });
+      return button.render()
     }
     $(".summernote").html(existingValue);
 
@@ -53,12 +63,12 @@ $(document).ready(function () {
       maxHeight: null, // set maximum height of editor
       focus: true,
       toolbar: [
-        ["style", ["bold", "italic", "underline", "clear"]],
-        ["font", ["strikethrough"]],
+        ["style", ["style", "bold", "italic", "underline","strikethrough", "color", "clear"]],
+        // ["font", ["strikethrough"]],
         //    ["fontsize", ["fontsize"]],
-        ["insert", ["link", "table"]],
-        ["color", ["color"]],
-        ["para", ["ul", "ol", "paragraph", "style"]],
+        ["insert", ["link", "table", 'asset', 'add']],
+        // ["color", ["color"]],
+        ["para", ["ul", "ol", "paragraph"]],
         //    ["height", ["height"]],
         ["code", ["codeview"]],
       ],
@@ -84,8 +94,11 @@ $(document).ready(function () {
         },
       },
       buttons: {
-          asset: InsertAssetButton
-        }
+        asset: InsertAssetButton,
+        add: AddNewAssetButton
+      },
+      tabDisable: true
     });
+
   });
 });
